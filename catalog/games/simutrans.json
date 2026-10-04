@@ -38,7 +38,11 @@
         }
       },
       "archive": "zip",
-      "launch": { "app": "simutrans.app" }
+      "launch": {
+        "app": "simutrans.app",
+        "args": ["-res", "5", "-screen_scale", "100"],
+        "env": { "SDL_VIDEO_HIGHDPI_DISABLED": "1" }
+      }
     },
     "win32": {
       "asset": {
