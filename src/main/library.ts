@@ -522,6 +522,14 @@ function launchLogFile(gameId: string, channelId: string): string {
   return path.join(app.getPath('userData'), 'logs', `${safeTag(gameId)}-${safeTag(channelId)}.log`)
 }
 
+async function bundleExecutable(bundle: string): Promise<string> {
+  const directory = path.join(bundle, 'Contents', 'MacOS')
+  const entries = await readdir(directory, { withFileTypes: true })
+  const executable = entries.find((entry) => entry.isFile() || entry.isSymbolicLink())
+  if (!executable) throw new Error(`Couldn't find the executable inside ${path.basename(bundle)}`)
+  return path.join(directory, executable.name)
+}
+
 export function launchLog(gameId: string, channelId: string): string | null {
   const file = launchLogFile(gameId, channelId)
   return existsSync(file) ? file : null
@@ -534,7 +542,9 @@ export async function launchGame(gameId: string, channelId: string): Promise<voi
   if (!record) throw new Error('Install the game first')
 
   // Arguments come from the current catalog, so a changed game file applies without reinstalling.
-  const args = catalog.game(gameId)?.platforms[process.platform as PlatformId]?.launch?.args ?? record.args
+  const launch = catalog.game(gameId)?.platforms[process.platform as PlatformId]?.launch
+  const args = launch?.args ?? record.args
+  const environment = launch?.env
   const log = launchLogFile(gameId, channelId)
   const viaOpen = (target: string[]) => ['-n', '--stdout', log, '--stderr', log, ...target]
   const withArgs = args.length > 0 ? ['--args', ...args] : []
@@ -544,7 +554,9 @@ export async function launchGame(gameId: string, channelId: string): Promise<voi
       ? { file: 'open', args: viaOpen(['-a', runtime.executable, record.executable, ...withArgs]) }
       : { file: runtime.executable, args: [record.executable, ...args] }
     : process.platform === 'darwin' && record.kind === 'app'
-      ? { file: 'open', args: viaOpen([record.executable, ...withArgs]) }
+      ? environment
+        ? { file: await bundleExecutable(record.executable), args, environment }
+        : { file: 'open', args: viaOpen([record.executable, ...withArgs]) }
       : { file: record.executable, args: args }
   const cwd = path.dirname(record.executable)
 
@@ -569,6 +581,7 @@ export async function launchGame(gameId: string, channelId: string): Promise<voi
       const child = spawn(command.file, command.args, {
         cwd,
         detached: true,
+        ...(command.environment ? { env: { ...process.env, ...command.environment } } : {}),
         stdio: output === null ? 'ignore' : ['ignore', output, output]
       })
       child.once('error', () => reject(new Error('The installed files are missing. Install the game again.')))

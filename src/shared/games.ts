@@ -110,7 +110,7 @@ function readLaunch(value: unknown, where: string, errors: string[]): LaunchSpec
     errors.push(`${where} must be an object`)
     return undefined
   }
-  pushUnknown(value, new Set(['app', 'binary', 'args']), where, errors)
+  pushUnknown(value, new Set(['app', 'binary', 'args', 'env']), where, errors)
   const launch: LaunchSpec = {}
   if (value.app !== undefined) {
     const app = readName(value.app, `${where}.app`, errors)
@@ -133,6 +133,21 @@ function readLaunch(value: unknown, where: string, errors: string[]): LaunchSpec
         args.push(arg)
       }
       launch.args = args
+    }
+  }
+  if (value.env !== undefined) {
+    if (!isRecord(value.env)) {
+      errors.push(`${where}.env must be an object`)
+    } else {
+      const env: Record<string, string> = {}
+      for (const [key, entry] of Object.entries(value.env)) {
+        if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(key) || typeof entry !== 'string' || entry.length > 200 || entry.includes('\n')) {
+          errors.push(`${where}.env has an unusable entry`)
+          break
+        }
+        env[key] = entry
+      }
+      launch.env = env
     }
   }
   if (!launch.app && !launch.binary) errors.push(`${where} needs an app or a binary`)

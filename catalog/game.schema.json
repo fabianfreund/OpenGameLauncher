@@ -404,6 +404,17 @@
             "maxLength": 200
           },
           "description": "Arguments passed to the game."
+        },
+        "env": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "propertyNames": {
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+          },
+          "description": "Environment variables passed to the game executable."
         }
       }
     },

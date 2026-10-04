@@ -15,6 +15,7 @@ export type LaunchSpec = {
   app?: string
   binary?: string
   args?: string[]
+  env?: Record<string, string>
 }
 
 // An engine the game file runs inside, such as LÖVE for .love files. Shared between games.
